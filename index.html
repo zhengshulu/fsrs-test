@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>FSRS 复习助手（App版）</title>
+<style>
+  *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;padding:0;}
+  body{background:#f8f9fc;padding-bottom:60px;min-height:100vh;}
+  .container{max-width:700px;margin:0 auto;padding:0 12px;}
+  .page{display:none;}
+  .page.active{display:block;animation:fadeIn 0.3s ease;}
+  @keyframes fadeIn {from{opacity:0;}to{opacity:1;}}
+  .card{background:#fff;border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 2px 12px rgba(0,0,0,0.05);}
+  h2{font-size:20px;margin:8px 0 16px;color:#222;font-weight:600;}
+  h3{font-size:16px;margin:8px 0;color:#333;font-weight:600;}
+  h4{font-size:15px;margin:0 0 10px 0;color:#333;font-weight:500;}
+  .interval-setting{margin:10px 0;padding:12px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;}
+  .interval-item{display:flex;align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap;}
+  .interval-item label{width:60px;font-size:14px;color:#333;}
+  .interval-item input{width:80px;margin:0;padding:6px 8px;font-size:14px;border:1px solid #e2e8f0;border-radius:8px;outline:none;}
+  .interval-item input:focus{border-color:#10b8b1;}
+  .interval-tip{font-size:12px;color:#647888;margin-top:4px;}
+  .subject-group {margin:18px 0 10px 0;padding:8px 12px;border-left:4px solid #636f81;background:#f8fafc;border-radius:0 8px 8px 0;font-size:15px;font-weight:600;color:#333;}
+  input,textarea{width:100%;margin:6px 0;padding:10px 12px;border:1px solid #e2e8f0;border-radius:12px;font-size:15px;outline:none;transition:border 0.2s;}
+  input:focus,textarea:focus{border-color:#10b8b1;}
+  textarea{resize:vertical;min-height:80px;line-height:1.5;}
+  button{border:none;border-radius:12px;cursor:pointer;transition:all 0.2s;}
+  button:disabled{opacity:0.6;cursor:not-allowed;}
+  .btn-primary{background:#636f81;color:white;padding:10px 14px;font-size:14px;}
+  .btn-primary:hover{background:#525c66;}
+  .btn-export{background:#16a34a;color:white;padding:10px 14px;font-size:14px;}
+  .btn-import{background:#14b8a6;color:white;padding:10px 14px;font-size:14px;}
+  .btn-filter{background:#eef2ff;color:#4f46e5;border:1px solid #ddd;padding:6px 10px;font-size:13px;}
+  .btn-filter.active{background:#4f46e5;color:#fff;border:1px solid #4f46e5;}
+  .btn-sync{background:#0071e3;color:white;padding:10px 14px;font-size:14px;}
+  .btn-upload{background:#7c3aed;color:white;padding:10px 14px;font-size:14px;}
+  .btn-save-interval{background:#f59e0b;color:white;padding:6px 12px;font-size:13px;margin-top:8px;}
+  .subject-row{padding:12px 14px;margin:8px 0;background:#fdfdfe;border-radius:10px;transition:background 0.2s;}
+  .subject-row:hover{background:#f8fafc;}
+  .due{color:#ef4444;font-weight:600;}
+  .normal{color:#647888;font-size:14px;}
+  .filter-bar{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;padding:8px;background:#f5f7fa;border-radius:10px;}
+  .empty-tip{color:#94a3b8;padding:24px;text-align:center;font-size:14px;line-height:1.6;}
+  .empty-tip i{font-size:24px;margin-bottom:8px;display:block;}
+  .img-preview{width:100%;max-height:200px;object-fit:contain;border-radius:8px;margin:8px 0;border:1px solid #f1f5f9;display:none;}
+  .img-show{width:100%;max-height:150px;object-fit:contain;border-radius:6px;margin:6px 0;}
+  .upload-area{display:flex;align-items:center;gap:8px;margin:8px 0;}
+  #imgFile,#importFile{display:none;}
+  .sync-tip{font-size:12px;color:#0071e3;text-align:center;margin:4px 0;padding:4px;background:#e8f4ff;border-radius:6px;}
+  .bottom-nav{position:fixed;bottom:0;left:0;right:0;height:60px;background:#fff;border-top:1px solid #e2e8f0;display:flex;justify-content:space-around;align-items:center;z-index:100;box-shadow:0 -2px 8px rgba(0,0,0,0.03);}
+  .nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;color:#94a3b8;font-size:12px;cursor:pointer;transition:all 0.2s;padding:6px 0;}
+  .nav-item.active{color:#10b8b1;}
+  .nav-item i{font-size:20px;margin-bottom:4px;}
+  .message-item{display:flex;align-items:center;padding:16px;border-bottom:1px solid #f1f5f9;}
+  .message-item:last-child{border-bottom:none;}
+  .message-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-right:12px;color:white;}
+  .message-icon.system{background:#22c55e;}
+  .message-icon.reminder{background:#94a3b8;}
+  .message-content{flex:1;}
+  .message-title{font-size:16px;font-weight:500;color:#1f2937;margin-bottom:2px;}
+  .message-text{font-size:14px;color:#6b7280;}
+  .message-time{font-size:12px;color:#9ca3af;}
+  /* 新增：日历选择器容器样式，默认隐藏 */
+  .due-time-container{display:none;margin:6px 0 0 0;}
+  .due-time-input{width:100%;padding:8px;border-radius:8px;font-size:14px;border:1px solid #e2e8f0;transition:border 0.2s;}
+  .due-time-input:focus{border-color:#10b8b1;}
+  /* 图表专属样式优化 */
+  #recentTaskChart{height:220px;position:relative;margin-top:10px;padding-left:15px;padding-bottom:25px;}
+  .chart-grid{position:absolute;top:0;left:15px;right:0;bottom:25px;border-left:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;z-index:1;}
+  .chart-legend{display:flex;align-items:center;gap:16px;font-size:12px;color:#666;margin-bottom:10px;flex-wrap:wrap;}
+  .chart-legend-item{display:flex;align-items:center;gap:4px;}
+  .chart-legend-dot{width:12px;height:12px;border-radius:2px;display:inline-block;}
+  /* 核心调整：按钮统一样式（同尺寸、同间距） */
+  .opt-btn {
+    height: 40px;
+    padding: 0;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* 6个按钮（今日待复习）- 均分宽度 */
+  .opt-btn.group-6 {
+    width: calc((100% - 30px) / 6); /* 6个按钮 + 5个间距，总间距30px */
+    margin: 0 2.5px; /* 左右间距2.5px */
+  }
+  /* 3个按钮（全部知识点/记忆分类列表）- 均分宽度 */
+  .opt-btn.group-3 {
+    width: calc((100% - 15px) / 3); /* 3个按钮 + 2个间距，总间距15px */
+    margin: 0 2.5px; /* 左右间距2.5px */
+  }
+  /* 保持原有按钮颜色 */
+  .opt-btn.hard {background: #f59e0b;color: white;}
+  .opt-btn.review {background: #10b8b1;color: white;}
+  .opt-btn.easy {background: #3b82f6;color: white;}
+  .opt-btn.manual {background: #06b6d4;color: white;}
+  .opt-btn.edit {background: #06b6d4;color: white;}
+  .opt-btn.del {background: #ef4444;color: white;}
+  /* 记忆分类区域点击样式 */
+  .memory-category{cursor:pointer;transition:all 0.2s;border-radius:12px;padding:12px 0;}
+  .memory-category:hover{background:#f0f9ff;transform:scale(1.02);}
+  /* 返回按钮样式 */
+  .btn-back{background:#e2e8f0;color:#333;padding:8px 16px;font-size:14px;margin-bottom:12px;display:inline-block;}
+  .btn-back:hover{background:#d1d5db;}
+</style>
+</head>
+<body>
+<div class="container">
+  <div id="page-home" class="page active">
+    <div class="sync-tip">🍎 苹果设备专属 | iCloud Drive同步 + 本地永久保存 | 支持图文知识点</div>
+    <div class="card">
+      <h2>🧠 FSRS 复习助手</h2>
+      <div class="top-actions">
+        <button class="btn-import" onclick="document.getElementById('importFile').click()">导入</button>
+        <button class="btn-export" onclick="exportCSV()">导出 CSV</button>
+        <button class="btn-sync" onclick="syncICloud()">🔄 同步iCloud</button>
+        <input type="file" id="importFile" accept=".csv,.xlsx,.xls" style="display:none">
+      </div>
+      <input id="subject" placeholder="科目：数学/英语/物理等" autocomplete="off">
+      <textarea id="content" placeholder="知识点文字（可搭配图片）" autocomplete="off"></textarea>
+      <div class="upload-area">
+        <button class="btn-upload" onclick="document.getElementById('imgFile').click()">📷 上传图片</button>
+        <span id="imgTip">未选择图片</span>
+        <input type="file" id="imgFile" accept="image/*" style="display:none">
+      </div>
+      <img id="previewImg" class="img-preview" src="" alt="图片预览">
+      <button class="btn-primary" onclick="addItem()" style="margin-top:8px;width:100%;">添加知识点</button>
+    </div>
+    <div class="card">
+      <h3>📅 今日待复习</h3>
+      <div class="filter-bar" id="dueFilterBar"></div>
+      <div id="dueList"></div>
+    </div>
+    <div class="card">
+      <h3>📚 全部知识点</h3>
+      <div class="filter-bar" id="allFilterBar"></div>
+      <div id="allList"></div>
+    </div>
+  </div>
+
+  <!-- 记忆主页面 -->
+  <div id="page-memory" class="page">
+    <div class="card">
+      <h2>🧠 我的记忆</h2>
+      <div style="display: flex; justify-content: space-around; text-align: center; padding: 16px 0;gap:8px;">
+        <!-- 短期记忆（可点击） -->
+        <div class="memory-category" style="flex:1;" onclick="showMemoryCategory('short')">
+          <div id="shortTermCount" style="font-size:28px;font-weight:bold;color:#f59e0b;line-height:1.2;">0</div>
+          <div style="font-size:14px;color:#666;margin-top:4px;">短期 (≤21天)</div>
+        </div>
+        <!-- 转化中记忆（可点击） -->
+        <div class="memory-category" style="flex:1;" onclick="showMemoryCategory('medium')">
+          <div id="mediumTermCount" style="font-size:28px;font-weight:bold;color:#a3a329;line-height:1.2;">0</div>
+          <div style="font-size:14px;color:#666;margin-top:4px;">转化中 (21-90天)</div>
+        </div>
+        <!-- 长期记忆（可点击） -->
+        <div class="memory-category" style="flex:1;" onclick="showMemoryCategory('long')">
+          <div id="longTermCount" style="font-size:28px;font-weight:bold;color:#16a34a;line-height:1.2;">0</div>
+          <div style="font-size:14px;color:#666;margin-top:4px;">长期 (>90天)</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>📅 近期任务分布</h3>
+      <div class="chart-legend">
+        <div class="chart-legend-item">
+          <span class="chart-legend-dot" style="background:#3b82f6;"></span>
+          <span>新任务</span>
+        </div>
+        <div class="chart-legend-item">
+          <span class="chart-legend-dot" style="background:#fbbf24;"></span>
+          <span>短期</span>
+        </div>
+        <div class="chart-legend-item">
+          <span class="chart-legend-dot" style="background:#a3a329;"></span>
+          <span>转化中</span>
+        </div>
+        <div class="chart-legend-item">
+          <span class="chart-legend-dot" style="background:#16a34a;"></span>
+          <span>长期</span>
+        </div>
+      </div>
+      <div class="chart-grid"></div>
+      <div id="recentTaskChart"></div>
+    </div>
+  </div>
+
+  <!-- 记忆分类详情页（点击统计区域后显示） -->
+  <div id="page-memory-category" class="page">
+    <a class="btn-back" onclick="switchToMemoryMain()">← 返回我的记忆</a>
+    <div class="card">
+      <h3 id="categoryTitle">短期记忆知识点 (≤21天)</h3>
+      <div class="filter-bar" id="categoryFilterBar"></div>
+      <div id="categoryList"></div>
+    </div>
+  </div>
+
+  <div id="page-message" class="page">
+    <div class="card">
+      <h2>💬 消息通知</h2>
+      <div class="message-item">
+        <div class="message-icon system"><span>🔔</span></div>
+        <div class="message-content">
+          <div class="message-title">系统通知</div>
+          <div class="message-text">欢迎使用FSRS复习助手，数据本地加密保存更安全！</div>
+        </div>
+        <div class="message-time">a moment ago</div>
+      </div>
+      <div class="message-item">
+        <div class="message-icon reminder"><span>🔔</span></div>
+        <div class="message-content">
+          <div class="message-title">学习提醒</div>
+          <div class="message-text">今天还没有完成学习任务哦，快来复习知识点吧！</div>
+        </div>
+        <div class="message-time">2 hours ago</div>
+      </div>
+    </div>
+  </div>
+  <div id="page-settings" class="page">
+    <div class="card">
+      <h2>⚙️ 复习设置</h2>
+      <div class="interval-setting">
+        <h4>复习间隔倍率自定义</h4>
+        <div class="interval-item">
+          <label>模糊：</label>
+          <input type="number" id="hardRate" step="0.1" min="0.1" placeholder="默认1.5" autocomplete="off">
+          <span>倍（原间隔×倍率）</span>
+        </div>
+        <div class="interval-item">
+          <label>记得：</label>
+          <input type="number" id="reviewRate" step="0.1" min="0.1" placeholder="默认2.0" autocomplete="off">
+          <span>倍（原间隔×倍率）</span>
+        </div>
+        <div class="interval-item">
+          <label>熟练：</label>
+          <input type="number" id="easyRate" step="0.1" min="0.1" placeholder="默认3.0" autocomplete="off">
+          <span>倍（原间隔×倍率）</span>
+        </div>
+        <button class="btn-save-interval" style="width:100%;margin-top:10px;">💾 保存配置</button>
+        <div class="interval-tip">提示：配置自动本地保存，刷新不丢失；倍率越小复习越频繁，越大间隔越久</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="bottom-nav">
+  <div class="nav-item active" onclick="switchPage('home')"><i>🏠</i><span>首页</span></div>
+  <div class="nav-item" onclick="switchToMemoryMain()"><i>🧠</i><span>记忆</span></div>
+  <div class="nav-item" onclick="switchPage('message')"><i>💬</i><span>消息</span></div>
+  <div class="nav-item" onclick="switchPage('settings')"><i>⚙️</i><span>设置</span></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+const STORAGE_KEY = "fsrs_local_data";
+const INTERVAL_CONFIG_KEY = "fsrs_interval_config";
+const ICLD_FILE_NAME = "fsrs-bella-data.json";
+const ICLD_FOLDER = "FSRS复习助手";
+let dataList = [];
+let dueFilter = "all", allFilter = "all", categoryFilter = "all";
+let currentMemoryCategory = "short"; // 当前选中的记忆分类
+let tempImgBase64 = "";
+let intervalConfig = { hard: 1.5, review: 2.0, easy: 3.0 };
+
+// 切换到记忆主页面
+function switchToMemoryMain() {
+  document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+  document.getElementById('page-memory').classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+  document.querySelector('.nav-item[onclick="switchToMemoryMain()"]').classList.add('active');
+  window.scrollTo(0, 0);
+  updateMemoryPage();
+}
+
+// 显示记忆分类详情页
+function showMemoryCategory(category) {
+  currentMemoryCategory = category;
+  // 更新标题
+  const titleMap = {
+    short: "短期记忆知识点 (≤21天)",
+    medium: "转化中记忆知识点 (21-90天)",
+    long: "长期记忆知识点 (>90天)"
+  };
+  document.getElementById('categoryTitle').innerText = titleMap[category];
+  // 渲染筛选栏和列表
+  renderCategoryFilterBar();
+  renderCategoryList();
+  // 切换页面
+  document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+  document.getElementById('page-memory-category').classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// 渲染记忆分类筛选栏
+function renderCategoryFilterBar() {
+  const container = document.getElementById('categoryFilterBar');
+  if (!container) return;
+  const subjects = [...new Set(dataList.map(it => it.subject || "未分类"))].sort();
+  let html = `<button class="btn-filter ${categoryFilter === 'all' ? 'active' : ''}" onclick="changeCategoryFilter('all')">全部</button>`;
+  subjects.forEach(sub => {
+    html += `<button class="btn-filter ${categoryFilter === sub ? 'active' : ''}" onclick="changeCategoryFilter('${sub}')">${sub}</button>`;
+  });
+  container.innerHTML = subjects.length === 0 ? '<div class="empty-tip">暂无科目</div>' : html;
+}
+
+// 切换记忆分类筛选条件
+function changeCategoryFilter(sub) {
+  categoryFilter = sub;
+  renderCategoryList();
+}
+
+// 渲染记忆分类知识点列表
+function renderCategoryList() {
+  const container = document.getElementById('categoryList');
+  if (!container) return;
+  // 筛选对应记忆分类的知识点
+  let filteredData = dataList.filter(it => {
+    const days = it.lastDays || 0;
+    if (currentMemoryCategory === 'short') return days <= 21;
+    if (currentMemoryCategory === 'medium') return days > 21 && days <= 90;
+    if (currentMemoryCategory === 'long') return days > 90;
+    return false;
+  });
+  // 应用科目筛选
+  filteredData = categoryFilter === 'all' ? filteredData : filteredData.filter(it => (it.subject || "未分类") === categoryFilter);
+  // 按科目分组渲染
+  let html = "";
+  if (filteredData.length === 0) {
+    html = '<div class="empty-tip">暂无该分类的知识点</div>';
+    container.innerHTML = html;
+    return;
+  }
+  const groups = {};
+  filteredData.forEach((it, idx) => {
+    const k = it.subject || "未分类";
+    if (!groups[k]) groups[k] = [];
+    groups[k].push({ it, idx: dataList.findIndex(d => d.content === it.content && d.subject === it.subject) });
+  });
+  Object.keys(groups).sort().forEach(sub => {
+    html += `<div class="subject-group">📁 ${sub} (${groups[sub].length}条)</div>`;
+    groups[sub].forEach(({ it, idx }) => {
+      const dueDate = new Date(it.due * 86400000);
+      const dueStr = it.due <= now() 
+        ? `<span class="due">今天复习</span>` 
+        : `${dueDate.getMonth()+1}月${dueDate.getDate()}日复习`;
+      const imgHtml = it.img ? `<img src="${it.img}" class="img-show" alt="知识点图片">` : "";
+      // 仅显示3个按钮（手动/编辑/删除）
+      const buttonHtml = `
+        <button class="opt-btn group-3 manual" onclick="triggerManualDate(${idx})">手动</button>
+        <button class="opt-btn group-3 edit" onclick="editItem(${idx})">编辑</button>
+        <button class="opt-btn group-3 del" onclick="deleteItem(${idx})">删除</button>
+      `;
+      html += `<div class="subject-row">
+                <div style="margin-bottom:6px;font-weight:500;">${it.content}</div>
+                ${imgHtml}
+                <div style="font-size:14px;margin:4px 0;" class="normal">${dueStr}</div>
+                <div id="due-time-container-${idx}" class="due-time-container">
+                  <input type="date" class="due-time-input" value="${dayToDateStr(it.due)}" onchange="updateDueTime(${idx}, this.value)">
+                </div>
+                <div style="margin-top:8px;display:flex;align-items:center;width:100%;">
+                  ${buttonHtml}
+                </div>
+              </div>`;
+    });
+  });
+  container.innerHTML = html;
+}
+
+function switchPage(pageName) {
+  document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+  const targetPage = document.getElementById(`page-${pageName}`);
+  targetPage.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+  document.querySelector(`.nav-item[onclick="switchPage('${pageName}')"]`).classList.add('active');
+  window.scrollTo(0, 0);
+  if (pageName === 'memory') updateMemoryPage();
+}
+
+function loadIntervalConfig() {
+  try {
+    const s = localStorage.getItem(INTERVAL_CONFIG_KEY);
+    if (s) intervalConfig = JSON.parse(s);
+    document.getElementById('hardRate').value = intervalConfig.hard;
+    document.getElementById('reviewRate').value = intervalConfig.review;
+    document.getElementById('easyRate').value = intervalConfig.easy;
+  } catch (e) {console.log("间隔配置加载失败，使用默认值：", e);}
+}
+
+function saveIntervalConfig() {
+  const hard = parseFloat(document.getElementById('hardRate').value) || 1.5;
+  const review = parseFloat(document.getElementById('reviewRate').value) || 2.0;
+  const easy = parseFloat(document.getElementById('easyRate').value) || 3.0;
+  intervalConfig = { hard, review, easy };
+  localStorage.setItem(INTERVAL_CONFIG_KEY, JSON.stringify(intervalConfig));
+  alert("✅ 复习间隔配置保存成功！\n模糊：" + hard + "倍 | 记得：" + review + "倍 | 熟练：" + easy + "倍");
+}
+
+function loadLocal() {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) dataList = JSON.parse(s);
+  } catch (e) {console.log("本地数据加载失败：", e);}
+}
+
+function saveLocal() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(dataList));
+}
+
+async function selectICloudFolder() {
+  if (!window.showOpenFilePicker) {
+    alert("❌ 非苹果设备/浏览器不支持iCloud Drive操作！\n仅支持Mac/iOS/iPadOS的Safari/Chrome浏览器");
+    return null;
+  }
+  try {
+    const [folderHandle] = await window.showOpenFilePicker({ type: "folder", multiple: false, startIn: "icloudDrive" });
+    const fsrsFolder = await folderHandle.getDirectoryHandle(ICLD_FOLDER, { create: true });
+    localStorage.setItem("icloud_folder_handle", JSON.stringify(await fsrsFolder.resolve()));
+    return fsrsFolder;
+  } catch (e) {
+    alert("iCloud文件夹选择取消/失败：" + e.message);
+    return null;
+  }
+}
+
+async function getICloudFolder() {
+  if (!window.showOpenFilePicker) return null;
+  const resolvePath = localStorage.getItem("icloud_folder_handle");
+  if (!resolvePath) return await selectICloudFolder();
+  try {
+    const folderHandle = await window.showOpenFilePicker({ type: "folder", multiple: false, startIn: "icloudDrive" }).then(res => res[0]);
+    return await folderHandle.getDirectoryHandle(ICLD_FOLDER, { create: true });
+  } catch (e) {
+    return await selectICloudFolder();
+  }
+}
+
+async function loadICloud() {
+  const folder = await getICloudFolder();
+  if (!folder) return [];
+  try {
+    const fileHandle = await folder.getFileHandle(ICLD_FILE_NAME, { create: false });
+    const file = await fileHandle.getFile();
+    const content = await file.text();
+    return JSON.parse(content) || [];
+  } catch (e) {
+    console.log("iCloud无历史数据，将创建新文件：", e);
+    return [];
+  }
+}
+
+async function saveICloud(data) {
+  const folder = await getICloudFolder();
+  if (!folder) return false;
+  try {
+    const fileHandle = await folder.getFileHandle(ICLD_FILE_NAME, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify(data, null, 2));
+    await writable.close();
+    return true;
+  } catch (e) {
+    alert("保存到iCloud失败：" + e.message);
+    return false;
+  }
+}
+
+function mergeICloudAndLocal(icloudData, localData) {
+  const map = new Map();
+  [...localData, ...icloudData].forEach(it => {
+    const key = `${it.subject}|${it.content}|${it.img ? it.img.slice(0, 50) : ''}`;
+    map.set(key, it);
+  });
+  return Array.from(map.values());
+}
+
+async function syncICloud() {
+  if (!window.showOpenFilePicker) {
+    alert("❌ 仅支持苹果设备（Mac/iOS/iPadOS）的Safari/Chrome浏览器使用iCloud同步！");
+    return;
+  }
+  try {
+    const icloudData = await loadICloud();
+    const mergedData = mergeICloudAndLocal(icloudData, dataList);
+    const isSaved = await saveICloud(mergedData);
+    if (isSaved) {
+      dataList = mergedData;
+      saveLocal();
+      render();
+      updateMemoryPage();
+      // 如果当前在分类页，重新渲染分类列表
+      if (document.getElementById('page-memory-category').classList.contains('active')) {
+        renderCategoryList();
+      }
+      alert(`✅ iCloud同步成功！\n当前总知识点：${dataList.length} 条\n（已同步到iCloud Drive/${ICLD_FOLDER}目录）`);
+    }
+  } catch (e) {
+    alert("iCloud同步异常：" + e.message);
+  }
+}
+
+document.getElementById('imgFile').onchange = function(e) {
+  const file = e.target.files[0];
+  if (!file || !file.type.startsWith('image/')) {
+    alert("请选择有效的图片文件！");
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    tempImgBase64 = ev.target.result;
+    const previewImg = document.getElementById('previewImg');
+    previewImg.src = tempImgBase64;
+    previewImg.style.display = "block";
+    let fileName = file.name;
+    if (fileName.length > 15) fileName = fileName.slice(0,12) + '...';
+    document.getElementById('imgTip').innerText = "已选择：" + fileName;
+  };
+  reader.readAsDataURL(file);
+};
+
+function now() { return Math.floor(Date.now() / 86400000); }
+function dayToDateStr(day) {
+  const date = new Date(day * 86400000);
+  return date.toISOString().split('T')[0];
+}
+function dateStrToDay(dateStr) {
+  const date = new Date(dateStr);
+  return Math.floor(date.getTime() / 86400000);
+}
+
+// 新增：触发手动修改日期
+function triggerManualDate(idx) {
+  // 隐藏所有其他日历
+  document.querySelectorAll('.due-time-container').forEach(elem => {
+    elem.style.display = "none";
+  });
+  // 显示当前知识点的日历
+  const container = document.getElementById(`due-time-container-${idx}`);
+  container.style.display = "block";
+  container.querySelector('.due-time-input').focus();
+}
+
+// 优化：修改复习时间函数
+function updateDueTime(idx, dateStr) {
+  if (!dateStr) return;
+  dataList[idx].due = dateStrToDay(dateStr);
+  saveLocal();
+  render();
+  updateMemoryPage();
+  // 选择后自动隐藏日历
+  document.getElementById(`due-time-container-${idx}`).style.display = "none";
+  // 如果当前在分类页，重新渲染分类列表
+  if (document.getElementById('page-memory-category').classList.contains('active')) {
+    renderCategoryList();
+  }
+  alert("✅ 复习时间已更新！");
+}
+
+function addItem() {
+  const sub = document.getElementById('subject').value.trim();
+  const cnt = document.getElementById('content').value.trim();
+  if (!sub) return alert("⚠️ 请填写科目名称！");
+  if (!cnt) return alert("⚠️ 请填写知识点内容！");
+  dataList.push({ subject: sub, content: cnt, due: now()+1, lastDays:0, img: tempImgBase64 });
+  document.getElementById('subject').value = '';
+  document.getElementById('content').value = '';
+  document.getElementById('imgTip').innerText = "未选择图片";
+  const previewImg = document.getElementById('previewImg');
+  previewImg.src = "";
+  previewImg.style.display = "none";
+  tempImgBase64 = "";
+  saveLocal();
+  render();
+  updateMemoryPage();
+  alert("✅ 知识点添加成功！");
+}
+
+function review(idx, grade) {
+  const it = dataList[idx];
+  it.lastDays = it.lastDays || 0;
+  const rate = grade === 2 ? intervalConfig.hard : grade === 3 ? intervalConfig.review : intervalConfig.easy;
+  const next = Math.max(1, Math.round(it.lastDays * rate));
+  it.due = now() + next;
+  it.lastDays = next;
+  saveLocal();
+  render();
+  updateMemoryPage();
+  // 如果当前在分类页，重新渲染分类列表
+  if (document.getElementById('page-memory-category').classList.contains('active')) {
+    renderCategoryList();
+  }
+  alert("✅ 复习完成！下次复习时间已更新");
+}
+
+function editItem(idx) {
+  const it = dataList[idx];
+  const s = prompt("修改科目", it.subject);
+  const c = prompt("修改知识点文字", it.content);
+  if (s == null || c == null) return;
+  const newSub = s.trim();
+  const newCnt = c.trim();
+  if (!newSub) return alert("⚠️ 科目名称不能为空！");
+  if (!newCnt) return alert("⚠️ 知识点内容不能为空！");
+  it.subject = newSub;
+  it.content = newCnt;
+  if (confirm("是否重新上传图片？\n（点击确定将清空原有图片，重新选择）")) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+          it.img = ev.target.result;
+          saveLocal();
+          render();
+          updateMemoryPage();
+          if (document.getElementById('page-memory-category').classList.contains('active')) {
+            renderCategoryList();
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
+  }
+  saveLocal();
+  render();
+  updateMemoryPage();
+  if (document.getElementById('page-memory-category').classList.contains('active')) {
+    renderCategoryList();
+  }
+  alert("✅ 知识点修改成功！");
+}
+
+function deleteItem(idx) {
+  if (!confirm("⚠️ 确定要删除该知识点吗？\n删除后无法恢复！")) return;
+  dataList.splice(idx, 1);
+  saveLocal();
+  render();
+  updateMemoryPage();
+  // 如果当前在分类页，重新渲染分类列表
+  if (document.getElementById('page-memory-category').classList.contains('active')) {
+    renderCategoryList();
+  }
+  alert("✅ 知识点删除成功！");
+}
+
+function renderFilterBar(containerId, activeFilter, onFilterChange) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const subjects = [...new Set(dataList.map(it => it.subject || "未分类"))].sort();
+  let html = `<button class="btn-filter ${activeFilter === 'all' ? 'active' : ''}" onclick="${onFilterChange}('all')">全部</button>`;
+  subjects.forEach(sub => {
+    html += `<button class="btn-filter ${activeFilter === sub ? 'active' : ''}" onclick="${onFilterChange}('${sub}')">${sub}</button>`;
+  });
+  container.innerHTML = subjects.length === 0 ? '<div class="empty-tip">暂无科目，先添加知识点吧</div>' : html;
+}
+
+function changeDueFilter(sub) { dueFilter = sub; render(); }
+function changeAllFilter(sub) { allFilter = sub; render(); }
+
+function render() {
+  const today = now();
+  renderFilterBar("dueFilterBar", dueFilter, "changeDueFilter");
+  renderFilterBar("allFilterBar", allFilter, "changeAllFilter");
+  const dueData = dataList.filter(it => it.due <= today);
+  const filteredDueData = dueFilter === 'all' ? dueData : dueData.filter(it => (it.subject || "未分类") === dueFilter);
+  const filteredAllData = allFilter === 'all' ? dataList : dataList.filter(it => (it.subject || "未分类") === allFilter);
+  // 今日待复习：传showReview=true，显示6个按钮
+  renderList(document.getElementById("dueList"), filteredDueData, true);
+  // 全部知识点：传showReview=false，仅显示3个按钮
+  renderList(document.getElementById("allList"), filteredAllData, false);
+}
+
+// 渲染通用列表（今日待复习/全部知识点）
+function renderList(el, list, showReview) {
+  if (!el) return;
+  let html = "";
+  if (list.length === 0) {
+    html = '<div class="empty-tip">暂无知识点数据<br>快去首页添加吧！</div>';
+    el.innerHTML = html;
+    return;
+  }
+  const groups = {};
+  list.forEach((it, idx) => {
+    const k = it.subject || "未分类";
+    if (!groups[k]) groups[k] = [];
+    groups[k].push({ it, idx: dataList.findIndex(d => d.content === it.content && d.subject === it.subject) });
+  });
+  Object.keys(groups).sort().forEach(sub => {
+    html += `<div class="subject-group">📁 ${sub} (${groups[sub].length}条)</div>`;
+    groups[sub].forEach(({ it, idx }) => {
+      const dueDate = new Date(it.due * 86400000);
+      const dueStr = it.due <= now() 
+        ? `<span class="due">今天复习</span>` 
+        : `${dueDate.getMonth()+1}月${dueDate.getDate()}日复习`;
+      const imgHtml = it.img ? `<img src="${it.img}" class="img-show" alt="知识点图片">` : "";
+      let buttonHtml = "";
+      
+      if (showReview) {
+        // 今日待复习：6个按钮
+        buttonHtml = `
+          <button class="opt-btn group-6 hard" onclick="review(${idx},2)">模糊</button>
+          <button class="opt-btn group-6 review" onclick="review(${idx},3)">记得</button>
+          <button class="opt-btn group-6 easy" onclick="review(${idx},4)">熟练</button>
+          <button class="opt-btn group-6 manual" onclick="triggerManualDate(${idx})">手动</button>
+          <button class="opt-btn group-6 edit" onclick="editItem(${idx})">编辑</button>
+          <button class="opt-btn group-6 del" onclick="deleteItem(${idx})">删除</button>
+        `;
+      } else {
+        // 全部知识点：3个按钮
+        buttonHtml = `
+          <button class="opt-btn group-3 manual" onclick="triggerManualDate(${idx})">手动</button>
+          <button class="opt-btn group-3 edit" onclick="editItem(${idx})">编辑</button>
+          <button class="opt-btn group-3 del" onclick="deleteItem(${idx})">删除</button>
+        `;
+      }
+      
+      html += `<div class="subject-row">
+                <div style="margin-bottom:6px;font-weight:500;">${it.content}</div>
+                ${imgHtml}
+                <div style="font-size:14px;margin:4px 0;" class="normal">${dueStr}</div>
+                <div id="due-time-container-${idx}" class="due-time-container">
+                  <input type="date" class="due-time-input" value="${dayToDateStr(it.due)}" onchange="updateDueTime(${idx}, this.value)">
+                </div>
+                <div style="margin-top:8px;display:flex;align-items:center;width:100%;">
+                  ${buttonHtml}
+                </div>
+              </div>`;
+    });
+  });
+  el.innerHTML = html;
+}
+
+function calculateMemoryStats() {
+  let shortTerm = 0, mediumTerm = 0, longTerm = 0;
+  dataList.forEach(it => {
+    const days = it.lastDays || 0;
+    if (days <= 21) shortTerm++;
+    else if (days <= 90) mediumTerm++;
+    else longTerm++;
+  });
+  return { shortTerm, mediumTerm, longTerm };
+}
+
+function getRecentTaskData() {
+  const today = now();
+  const days = [];
+  const todayDate = new Date(today * 86400000);
+  
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(todayDate);
+    d.setDate(d.getDate() + i);
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const date = String(d.getDate()).padStart(2, '0');
+    days.push(i === 0 ? '今天' : `${month}-${date}`);
+  }
+  const data = days.map((_, i) => {
+    const targetDay = today + i;
+    let newTask = 0, shortTerm = 0, mediumTerm = 0, longTerm = 0;
+    dataList.forEach(it => {
+      if (it.due === targetDay) {
+        const days = it.lastDays || 0;
+        if (days === 0) newTask++;
+        else if (days <= 21) shortTerm++;
+        else if (days <= 90) mediumTerm++;
+        else longTerm++;
+      }
+    });
+    return [newTask, shortTerm, mediumTerm, longTerm];
+  });
+  return { days, data };
+}
+
+function renderRecentTaskChart() {
+  const container = document.getElementById('recentTaskChart');
+  if (!container) return;
+  const { days, data } = getRecentTaskData();
+  const colors = ['#3b82f6', '#fbbf24', '#a3a329', '#16a34a'];
+  const maxValue = Math.max(...data.map(d => d.reduce((a, b) => a + b, 0)), 1);
+  const barWidth = 24;
+  const gap = 8;
+  const startX = 15;
+  const chartBottom = 180;
+  const chartHeight = 160;
+  let html = '';
+  const yTicks = maxValue <= 1 ? 1 : maxValue <= 5 ? 5 : 4;
+  for (let i = 0; i <= yTicks; i++) {
+    const y = chartBottom - (i * (chartHeight / yTicks));
+    const value = Math.round(i * (maxValue / yTicks));
+    html += `<div style="position: absolute; left: -5px; top: ${y - 5}px; font-size:10px; color:#888; width:20px; text-align:right;">${value}</div>`;
+  }
+  days.forEach((day, i) => {
+    const barData = data[i] || [0, 0, 0, 0];
+    let currentTop = chartBottom;
+    const total = barData.reduce((a, b) => a + b, 0);
+    const x = startX + i * (barWidth + gap);
+    [...barData].reverse().forEach((val, j) => {
+      if (val === 0) return;
+      const height = (val / maxValue) * chartHeight;
+      currentTop -= height;
+      const borderRadius = j === barData.length - 1 ? "4px 4px 0 0" : "0";
+      html += `<div style="position: absolute; left: ${x}px; top: ${currentTop}px; width: ${barWidth}px; height: ${height}px; background: ${colors[colors.length - 1 - j]}; border-radius: ${borderRadius}; transition:opacity 0.2s; z-index:2;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'"></div>`;
+    });
+    if (total > 0) {
+      html += `<div style="position: absolute; left: ${x + barWidth/2 - 8}px; top: ${currentTop - 15}px; font-size:11px; font-weight:600; color:#333; z-index:3;">${total}</div>`;
+    }
+    html += `<div style="position: absolute; left: ${x + barWidth/2 - 18}px; top: ${chartBottom + 5}px; font-size:11px; color:#666; width:36px; text-align:center;">${day}</div>`;
+  });
+  container.innerHTML = html;
+}
+
+function updateMemoryPage() {
+  const stats = calculateMemoryStats();
+  document.getElementById('shortTermCount').textContent = stats.shortTerm;
+  document.getElementById('mediumTermCount').textContent = stats.mediumTerm;
+  document.getElementById('longTermCount').textContent = stats.longTerm;
+  renderRecentTaskChart();
+}
+
+document.getElementById('importFile').onchange = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const wb = XLSX.read(ev.target.result, { type: 'array' });
+      const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+      let added = 0;
+      for (let i = 1; i < json.length; i++) {
+        const row = json[i];
+        const sub = (row[0] || "").trim();
+        const cnt = (row[1] || "").trim();
+        if (sub && cnt) {
+          dataList.push({ subject: sub, content: cnt, due: now()+1, lastDays:0, img: "" });
+          added++;
+        }
+      }
+      saveLocal();
+      render();
+      updateMemoryPage();
+      alert(`导入成功：${added} 条（CSV仅导入文字，图片需手动添加）`);
+    } catch (err) {
+      alert("导入失败：" + err.message);
+    }
+    e.target.value = "";
+  };
+  reader.readAsArrayBuffer(file);
+};
+
+function exportCSV() {
+  const rows = [["科目", "知识点", "下次复习日期", "记忆天数"]];
+  dataList.forEach(it => {
+    const dueDate = new Date(it.due * 86400000);
+    const dueStr = `${dueDate.getFullYear()}-${String(dueDate.getMonth()+1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
+    rows.push([it.subject, it.content, dueStr, it.lastDays || 0]);
+  });
+  const csv = XLSX.utils.sheet_to_csv(XLSX.utils.aoa_to_sheet(rows));
+  const blob = new Blob([new Uint8Array([0xEF,0xBB,0xBF]), csv], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `FSRS知识点_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`;
+  a.click();
+}
+
+// 点击空白处关闭日历
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.subject-row') || e.target.classList.contains('opt-btn')) return;
+  document.querySelectorAll('.due-time-container').forEach(elem => {
+    elem.style.display = "none";
+  });
+});
+
+// 初始化加载
+loadLocal();
+loadIntervalConfig();
+render();
+updateMemoryPage();
+</script>
+</body>
+</html>
