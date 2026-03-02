@@ -97,9 +97,6 @@
   .opt-btn.manual {background: #06b6d4;color: white;}
   .opt-btn.edit {background: #06b6d4;color: white;}
   .opt-btn.del {background: #ef4444;color: white;}
-  /* 记忆分类区域点击样式 */
-  .memory-category{cursor:pointer;transition:all 0.2s;border-radius:12px;padding:12px 0;}
-  .memory-category:hover{background:#f0f9ff;transform:scale(1.02);}
   /* 返回按钮样式 */
   .btn-back{background:#e2e8f0;color:#333;padding:8px 16px;font-size:14px;margin-bottom:12px;display:inline-block;}
   .btn-back:hover{background:#d1d5db;}
@@ -138,26 +135,28 @@
       <div id="allList"></div>
     </div>
   </div>
-
-  <!-- 记忆主页面 -->
+  <!-- 记忆主页面（已添加详情按钮） -->
   <div id="page-memory" class="page">
     <div class="card">
       <h2>🧠 我的记忆</h2>
       <div style="display: flex; justify-content: space-around; text-align: center; padding: 16px 0;gap:8px;">
-        <!-- 短期记忆（可点击） -->
-        <div class="memory-category" style="flex:1;" onclick="showMemoryCategory('short')">
+        <!-- 短期记忆（带详情按钮） -->
+        <div style="flex:1;">
           <div id="shortTermCount" style="font-size:28px;font-weight:bold;color:#f59e0b;line-height:1.2;">0</div>
           <div style="font-size:14px;color:#666;margin-top:4px;">短期 (≤21天)</div>
+          <button class="btn-primary" onclick="gotoMemoryDetail('short')" style="margin-top:8px;width:80%;">详情</button>
         </div>
-        <!-- 转化中记忆（可点击） -->
-        <div class="memory-category" style="flex:1;" onclick="showMemoryCategory('medium')">
+        <!-- 转化中记忆（带详情按钮） -->
+        <div style="flex:1;">
           <div id="mediumTermCount" style="font-size:28px;font-weight:bold;color:#a3a329;line-height:1.2;">0</div>
           <div style="font-size:14px;color:#666;margin-top:4px;">转化中 (21-90天)</div>
+          <button class="btn-primary" onclick="gotoMemoryDetail('medium')" style="margin-top:8px;width:80%;">详情</button>
         </div>
-        <!-- 长期记忆（可点击） -->
-        <div class="memory-category" style="flex:1;" onclick="showMemoryCategory('long')">
+        <!-- 长期记忆（带详情按钮） -->
+        <div style="flex:1;">
           <div id="longTermCount" style="font-size:28px;font-weight:bold;color:#16a34a;line-height:1.2;">0</div>
           <div style="font-size:14px;color:#666;margin-top:4px;">长期 (>90天)</div>
+          <button class="btn-primary" onclick="gotoMemoryDetail('long')" style="margin-top:8px;width:80%;">详情</button>
         </div>
       </div>
     </div>
@@ -185,8 +184,7 @@
       <div id="recentTaskChart"></div>
     </div>
   </div>
-
-  <!-- 记忆分类详情页（点击统计区域后显示） -->
+  <!-- 记忆分类详情页 -->
   <div id="page-memory-category" class="page">
     <a class="btn-back" onclick="switchToMemoryMain()">← 返回我的记忆</a>
     <div class="card">
@@ -195,7 +193,6 @@
       <div id="categoryList"></div>
     </div>
   </div>
-
   <div id="page-message" class="page">
     <div class="card">
       <h2>💬 消息通知</h2>
@@ -271,22 +268,45 @@ function switchToMemoryMain() {
   updateMemoryPage();
 }
 
-// 显示记忆分类详情页
-function showMemoryCategory(category) {
-  currentMemoryCategory = category;
-  // 更新标题
+// 点击详情按钮跳转记忆分类详情页（强制生效版）
+function gotoMemoryDetail(category) {
+  // 1. 强制设置当前分类（防止分类为空）
+  currentMemoryCategory = category || "short";
+  
+  // 2. 强制更新详情页标题（确保标题正确）
   const titleMap = {
     short: "短期记忆知识点 (≤21天)",
     medium: "转化中记忆知识点 (21-90天)",
     long: "长期记忆知识点 (>90天)"
   };
-  document.getElementById('categoryTitle').innerText = titleMap[category];
-  // 渲染筛选栏和列表
+  const titleEl = document.getElementById('categoryTitle');
+  if (titleEl) titleEl.innerText = titleMap[category] || "短期记忆知识点 (≤21天)";
+  
+  // 3. 强制渲染数据（先兜底处理数据，再渲染）
+  dataList = dataList.map(it => ({ 
+    ...it, 
+    lastDays: it.lastDays || 0, // 兜底记忆天数
+    subject: it.subject || "未分类", // 兜底科目
+    content: it.content || "无知识点内容", // 兜底内容
+    due: it.due || now() + 1 // 兜底复习日期
+  }));
   renderCategoryFilterBar();
   renderCategoryList();
-  // 切换页面
-  document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
-  document.getElementById('page-memory-category').classList.add('active');
+  
+  // 4. 强制切换页面（直接操作DOM，不依赖遍历）
+  const memoryPage = document.getElementById('page-memory');
+  const detailPage = document.getElementById('page-memory-category');
+  if (memoryPage && detailPage) {
+    memoryPage.classList.remove('active');
+    detailPage.classList.add('active');
+    console.log("页面切换成功，当前分类：", category);
+  } else {
+    console.log("页面元素未找到，强制创建切换");
+    // 兜底：如果元素未识别，用样式强制显示/隐藏
+    if (memoryPage) memoryPage.style.display = "none";
+    if (detailPage) detailPage.style.display = "block";
+  }
+  
   window.scrollTo(0, 0);
 }
 
@@ -308,61 +328,90 @@ function changeCategoryFilter(sub) {
   renderCategoryList();
 }
 
-// 渲染记忆分类知识点列表
+// 渲染记忆分类知识点列表（强制显示真实数据）
 function renderCategoryList() {
-  const container = document.getElementById('categoryList');
-  if (!container) return;
-  // 筛选对应记忆分类的知识点
-  let filteredData = dataList.filter(it => {
-    const days = it.lastDays || 0;
-    if (currentMemoryCategory === 'short') return days <= 21;
-    if (currentMemoryCategory === 'medium') return days > 21 && days <= 90;
-    if (currentMemoryCategory === 'long') return days > 90;
-    return false;
-  });
+  let container = document.getElementById('categoryList');
+  if (!container) {
+    console.log("分类列表容器未找到，创建临时容器");
+    // 兜底：如果容器不存在，手动创建
+    const tempContainer = document.createElement('div');
+    tempContainer.id = 'categoryList';
+    tempContainer.style.padding = "16px";
+    const cardEl = document.querySelector('#page-memory-category .card');
+    if (cardEl) cardEl.appendChild(tempContainer);
+    container = tempContainer;
+  }
+
+  // 再次兜底数据，确保无缺失字段
+  dataList = dataList.map(it => ({ 
+    ...it, 
+    lastDays: it.lastDays || 0,
+    subject: it.subject || "未分类",
+    content: it.content || "无知识点内容",
+    due: it.due || now() + 1 // 兜底复习日期
+  }));
+
+  // 筛选对应分类的知识点（严格判断）
+  let filteredData = [];
+  if (currentMemoryCategory === 'short') {
+    filteredData = dataList.filter(it => it.lastDays <= 21);
+  } else if (currentMemoryCategory === 'medium') {
+    filteredData = dataList.filter(it => it.lastDays > 21 && it.lastDays <= 90);
+  } else if (currentMemoryCategory === 'long') {
+    filteredData = dataList.filter(it => it.lastDays > 90);
+  }
+  console.log("筛选后知识点数量：", filteredData.length, "当前分类：", currentMemoryCategory);
+
   // 应用科目筛选
-  filteredData = categoryFilter === 'all' ? filteredData : filteredData.filter(it => (it.subject || "未分类") === categoryFilter);
-  // 按科目分组渲染
+  filteredData = categoryFilter === 'all' ? filteredData : filteredData.filter(it => it.subject === categoryFilter);
+
+  // 渲染数据（不管是否为空，都显示明确提示）
   let html = "";
   if (filteredData.length === 0) {
-    html = '<div class="empty-tip">暂无该分类的知识点</div>';
-    container.innerHTML = html;
-    return;
-  }
-  const groups = {};
-  filteredData.forEach((it, idx) => {
-    const k = it.subject || "未分类";
-    if (!groups[k]) groups[k] = [];
-    groups[k].push({ it, idx: dataList.findIndex(d => d.content === it.content && d.subject === it.subject) });
-  });
-  Object.keys(groups).sort().forEach(sub => {
-    html += `<div class="subject-group">📁 ${sub} (${groups[sub].length}条)</div>`;
-    groups[sub].forEach(({ it, idx }) => {
-      const dueDate = new Date(it.due * 86400000);
-      const dueStr = it.due <= now() 
-        ? `<span class="due">今天复习</span>` 
-        : `${dueDate.getMonth()+1}月${dueDate.getDate()}日复习`;
-      const imgHtml = it.img ? `<img src="${it.img}" class="img-show" alt="知识点图片">` : "";
-      // 仅显示3个按钮（手动/编辑/删除）
-      const buttonHtml = `
-        <button class="opt-btn group-3 manual" onclick="triggerManualDate(${idx})">手动</button>
-        <button class="opt-btn group-3 edit" onclick="editItem(${idx})">编辑</button>
-        <button class="opt-btn group-3 del" onclick="deleteItem(${idx})">删除</button>
-      `;
-      html += `<div class="subject-row">
-                <div style="margin-bottom:6px;font-weight:500;">${it.content}</div>
-                ${imgHtml}
-                <div style="font-size:14px;margin:4px 0;" class="normal">${dueStr}</div>
-                <div id="due-time-container-${idx}" class="due-time-container">
-                  <input type="date" class="due-time-input" value="${dayToDateStr(it.due)}" onchange="updateDueTime(${idx}, this.value)">
-                </div>
-                <div style="margin-top:8px;display:flex;align-items:center;width:100%;">
-                  ${buttonHtml}
-                </div>
-              </div>`;
+    html = `<div class="empty-tip">
+              <i>📭</i>
+              暂无该分类的知识点<br>
+              可去首页添加后再查看~
+            </div>`;
+  } else {
+    // 按科目分组渲染（强制显示所有知识点）
+    const groups = {};
+    filteredData.forEach((it, idx) => {
+      const subKey = it.subject || "未分类";
+      if (!groups[subKey]) groups[subKey] = [];
+      groups[subKey].push({ it, idx: idx }); // 直接用索引，避免查找失败
     });
-  });
+
+    Object.keys(groups).sort().forEach(sub => {
+      html += `<div class="subject-group">📁 ${sub} (${groups[sub].length}条)</div>`;
+      groups[sub].forEach(({ it, idx }) => {
+        const dueDate = new Date(it.due * 86400000);
+        const dueStr = it.due <= now() 
+          ? `<span class="due">今天复习</span>` 
+          : `${dueDate.getMonth()+1}月${dueDate.getDate()}日复习`;
+        const imgHtml = it.img ? `<img src="${it.img}" class="img-show" alt="知识点图片">` : "";
+        const buttonHtml = `
+          <button class="opt-btn group-3 manual" onclick="triggerManualDate(${idx})">手动</button>
+          <button class="opt-btn group-3 edit" onclick="editItem(${idx})">编辑</button>
+          <button class="opt-btn group-3 del" onclick="deleteItem(${idx})">删除</button>
+        `;
+        html += `<div class="subject-row">
+                  <div style="margin-bottom:6px;font-weight:500;">${it.content}</div>
+                  ${imgHtml}
+                  <div style="font-size:14px;margin:4px 0;" class="normal">${dueStr} | 记忆天数：${it.lastDays}天</div>
+                  <div id="due-time-container-${idx}" class="due-time-container">
+                    <input type="date" class="due-time-input" value="${dayToDateStr(it.due)}" onchange="updateDueTime(${idx}, this.value)">
+                  </div>
+                  <div style="margin-top:8px;display:flex;align-items:center;width:100%;">
+                    ${buttonHtml}
+                  </div>
+                </div>`;
+      });
+    });
+  }
+
   container.innerHTML = html;
+  console.log("知识点列表渲染完成");
 }
 
 function switchPage(pageName) {
@@ -485,7 +534,6 @@ async function syncICloud() {
       saveLocal();
       render();
       updateMemoryPage();
-      // 如果当前在分类页，重新渲染分类列表
       if (document.getElementById('page-memory-category').classList.contains('active')) {
         renderCategoryList();
       }
@@ -527,30 +575,32 @@ function dateStrToDay(dateStr) {
 
 // 新增：触发手动修改日期
 function triggerManualDate(idx) {
-  // 隐藏所有其他日历
   document.querySelectorAll('.due-time-container').forEach(elem => {
     elem.style.display = "none";
   });
-  // 显示当前知识点的日历
   const container = document.getElementById(`due-time-container-${idx}`);
-  container.style.display = "block";
-  container.querySelector('.due-time-input').focus();
+  if (container) container.style.display = "block";
+  const inputEl = container?.querySelector('.due-time-input');
+  if (inputEl) inputEl.focus();
 }
 
 // 优化：修改复习时间函数
 function updateDueTime(idx, dateStr) {
   if (!dateStr) return;
-  dataList[idx].due = dateStrToDay(dateStr);
-  saveLocal();
-  render();
-  updateMemoryPage();
-  // 选择后自动隐藏日历
-  document.getElementById(`due-time-container-${idx}`).style.display = "none";
-  // 如果当前在分类页，重新渲染分类列表
-  if (document.getElementById('page-memory-category').classList.contains('active')) {
-    renderCategoryList();
+  if (dataList[idx]) {
+    dataList[idx].due = dateStrToDay(dateStr);
+    saveLocal();
+    render();
+    updateMemoryPage();
+    const container = document.getElementById(`due-time-container-${idx}`);
+    if (container) container.style.display = "none";
+    if (document.getElementById('page-memory-category').classList.contains('active')) {
+      renderCategoryList();
+    }
+    alert("✅ 复习时间已更新！");
+  } else {
+    alert("❌ 未找到该知识点，无法更新");
   }
-  alert("✅ 复习时间已更新！");
 }
 
 function addItem() {
@@ -574,6 +624,7 @@ function addItem() {
 
 function review(idx, grade) {
   const it = dataList[idx];
+  if (!it) return alert("❌ 未找到该知识点");
   it.lastDays = it.lastDays || 0;
   const rate = grade === 2 ? intervalConfig.hard : grade === 3 ? intervalConfig.review : intervalConfig.easy;
   const next = Math.max(1, Math.round(it.lastDays * rate));
@@ -582,7 +633,6 @@ function review(idx, grade) {
   saveLocal();
   render();
   updateMemoryPage();
-  // 如果当前在分类页，重新渲染分类列表
   if (document.getElementById('page-memory-category').classList.contains('active')) {
     renderCategoryList();
   }
@@ -591,6 +641,7 @@ function review(idx, grade) {
 
 function editItem(idx) {
   const it = dataList[idx];
+  if (!it) return alert("❌ 未找到该知识点");
   const s = prompt("修改科目", it.subject);
   const c = prompt("修改知识点文字", it.content);
   if (s == null || c == null) return;
@@ -632,12 +683,12 @@ function editItem(idx) {
 }
 
 function deleteItem(idx) {
+  if (!dataList[idx]) return alert("❌ 未找到该知识点");
   if (!confirm("⚠️ 确定要删除该知识点吗？\n删除后无法恢复！")) return;
   dataList.splice(idx, 1);
   saveLocal();
   render();
   updateMemoryPage();
-  // 如果当前在分类页，重新渲染分类列表
   if (document.getElementById('page-memory-category').classList.contains('active')) {
     renderCategoryList();
   }
@@ -665,9 +716,7 @@ function render() {
   const dueData = dataList.filter(it => it.due <= today);
   const filteredDueData = dueFilter === 'all' ? dueData : dueData.filter(it => (it.subject || "未分类") === dueFilter);
   const filteredAllData = allFilter === 'all' ? dataList : dataList.filter(it => (it.subject || "未分类") === allFilter);
-  // 今日待复习：传showReview=true，显示6个按钮
   renderList(document.getElementById("dueList"), filteredDueData, true);
-  // 全部知识点：传showReview=false，仅显示3个按钮
   renderList(document.getElementById("allList"), filteredAllData, false);
 }
 
@@ -697,7 +746,6 @@ function renderList(el, list, showReview) {
       let buttonHtml = "";
       
       if (showReview) {
-        // 今日待复习：6个按钮
         buttonHtml = `
           <button class="opt-btn group-6 hard" onclick="review(${idx},2)">模糊</button>
           <button class="opt-btn group-6 review" onclick="review(${idx},3)">记得</button>
@@ -707,7 +755,6 @@ function renderList(el, list, showReview) {
           <button class="opt-btn group-6 del" onclick="deleteItem(${idx})">删除</button>
         `;
       } else {
-        // 全部知识点：3个按钮
         buttonHtml = `
           <button class="opt-btn group-3 manual" onclick="triggerManualDate(${idx})">手动</button>
           <button class="opt-btn group-3 edit" onclick="editItem(${idx})">编辑</button>
@@ -733,6 +780,7 @@ function renderList(el, list, showReview) {
 
 function calculateMemoryStats() {
   let shortTerm = 0, mediumTerm = 0, longTerm = 0;
+  dataList = dataList.map(it => ({ ...it, lastDays: it.lastDays || 0 }));
   dataList.forEach(it => {
     const days = it.lastDays || 0;
     if (days <= 21) shortTerm++;
